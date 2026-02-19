@@ -66,4 +66,4 @@ For visible pixels, the custom fragment shaders (e.g., `fs_multi_light_smooth`) 
 - Color Output: Final RGB values are clamped and packed into a `uint32_t` color buffer.
 
 # 8. Presentation
-Once all tiles are rasterized, the worker threads sleep. The main thread takes the finalized `uint32_t `color buffer and uploads it directly to an SDL Streaming Texture to be presented to the window.
+Once all tiles are rasterized, the worker threads sleep. The main thread takes the finalized `uint32_t` color buffer and uploads it directly to an SDL Streaming Texture to be presented to the window.
