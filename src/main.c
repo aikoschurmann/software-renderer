@@ -12,8 +12,8 @@
 
 #define SCREEN_W 1000
 #define SCREEN_H 768
-#define INSTANCE_COUNT (1024 * 4) 
-#define LIGHT_COUNT 128
+#define INSTANCE_COUNT (1024 * 8) 
+#define LIGHT_COUNT 256
 #define TARGET_FPS_UPDATE 0.5f
 
 typedef struct {
@@ -26,13 +26,24 @@ typedef struct {
     bool  is_running;
 } App;
 
+// Add this helper function to modify the final color buffer
+#include <stdlib.h>
+#include <math.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdlib.h>
+
+void apply_post_processing(uint32_t* buffer, int width, int height, float time) {
+    
+}
+
 bool init_app(App *app) {
     memset(app, 0, sizeof(App));
     
     app->platform = platform_create("SoftRenderer Engine", SCREEN_W, SCREEN_H);
     if (!app->platform) return false;
 
-    app->renderer = renderer_create(SCREEN_W, SCREEN_H, 9, 100, 100);
+    app->renderer = renderer_create(SCREEN_W, SCREEN_H, 10, 100, 100);
     renderer_set_cull_mode(app->renderer, CULL_BACK_CCW); 
 
     app->scene = scene_create(INSTANCE_COUNT);
@@ -133,6 +144,8 @@ int main(void) {
         update_game_logic(&app, dt);
 
         // 3. Render
+        app.uniforms.dt = app.total_time;
+
         scene_render_frame(app.scene, app.renderer, app.platform, &app.uniforms, 0x050508FF);
 
         // FPS tracking

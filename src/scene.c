@@ -115,6 +115,8 @@ void scene_render(Scene* scene, Renderer* renderer, Uniforms* base_uniforms) {
     }
 }
 
+extern void apply_post_processing(uint32_t* buffer, int width, int height, float time);
+
 void scene_render_frame(Scene* scene, Renderer* renderer, Platform* platform, Uniforms* uniforms, uint32_t clear_color) {
     renderer_reset(renderer);
     renderer_clear(renderer, clear_color, 1.0f);
@@ -123,6 +125,8 @@ void scene_render_frame(Scene* scene, Renderer* renderer, Platform* platform, Un
 
     renderer_bin_triangles(renderer);      
     renderer_rasterize(renderer); 
+    
+    apply_post_processing(renderer->color_buffer, (int)uniforms->screen_width, (int)uniforms->screen_height, uniforms->dt);
     
     // Swap buffers
     platform_update_window(platform, renderer->color_buffer, (int)uniforms->screen_width, (int)uniforms->screen_height);
