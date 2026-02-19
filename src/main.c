@@ -14,7 +14,7 @@
 #define SCREEN_H 768
 #define INSTANCE_COUNT (1024 * 8) 
 #define LIGHT_COUNT 256
-#define TARGET_FPS_UPDATE 0.5f
+#define TARGET_FPS_UPDATE 5.0f
 
 typedef struct {
     Platform *platform;

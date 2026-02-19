@@ -295,6 +295,13 @@ void renderer_bin_triangles(Renderer *r) {
     }
 }
 
+static inline int is_top_left(int64_t xA, int64_t yA, int64_t xB, int64_t yB) {
+    int64_t dx = xB - xA;
+    int64_t dy = yB - yA;
+    // Standard top-left rule for a Y-down coordinate system
+    return (dy < 0) || (dy == 0 && dx > 0);
+}
+
 static void rasterize_triangle_in_tile(Renderer *r, Triangle *t, Tile *tile) {
     DrawCall *dc = &r->draw_calls[t->draw_id];
     void* uniforms = get_dc_uniforms(r, dc);
@@ -302,40 +309,75 @@ static void rasterize_triangle_in_tile(Renderer *r, Triangle *t, Tile *tile) {
     BoundingBox bbox = calculate_triangle_bbox(t);
     int min_x = MAX(bbox.min.x, tile->x0), max_x = MIN(bbox.max.x, tile->x1 - 1);
     int min_y = MAX(bbox.min.y, tile->y0), max_y = MIN(bbox.max.y, tile->y1 - 1);
+    if (min_x > max_x || min_y > max_y) return;
 
-    float area = edge_func(t->v[0].x, t->v[0].y, t->v[1].x, t->v[1].y, t->v[2].x, t->v[2].y);
+    const int sub_pixel_bits = 8;
+    const int sub_pixel_scale = 1 << sub_pixel_bits;
+    
+    int64_t x0 = (int64_t)(t->v[0].x * sub_pixel_scale), y0 = (int64_t)(t->v[0].y * sub_pixel_scale);
+    int64_t x1 = (int64_t)(t->v[1].x * sub_pixel_scale), y1 = (int64_t)(t->v[1].y * sub_pixel_scale);
+    int64_t x2 = (int64_t)(t->v[2].x * sub_pixel_scale), y2 = (int64_t)(t->v[2].y * sub_pixel_scale);
+
+    int64_t dx12 = x2 - x1, dy12 = y2 - y1;
+    int64_t dx20 = x0 - x2, dy20 = y0 - y2;
+    int64_t dx01 = x1 - x0, dy01 = y1 - y0;
+
+    // FIX 1: Corrected area to match original winding (dx02 * dy01 - dy02 * dx01)
+    int64_t area = (x2 - x0) * dy01 - (y2 - y0) * dx01;
     if (area <= 0) return; 
-    float inv_area = 1.0f / area;
+    float inv_area = 1.0f / (float)area;
 
-    float dw0_dx = (t->v[2].y - t->v[1].y) * inv_area;
-    float dw1_dx = (t->v[0].y - t->v[2].y) * inv_area;
-    float dw2_dx = (t->v[1].y - t->v[0].y) * inv_area;
+    int64_t bias0 = is_top_left(x1, y1, x2, y2) ? 0 : -1;
+    int64_t bias1 = is_top_left(x2, y2, x0, y0) ? 0 : -1;
+    int64_t bias2 = is_top_left(x0, y0, x1, y1) ? 0 : -1;
 
-    float dw0_dy = (t->v[1].x - t->v[2].x) * inv_area;
-    float dw1_dy = (t->v[2].x - t->v[0].x) * inv_area;
-    float dw2_dy = (t->v[0].x - t->v[1].x) * inv_area;
+    int64_t p_start_x = ((int64_t)min_x << sub_pixel_bits) + (sub_pixel_scale >> 1);
+    int64_t p_start_y = ((int64_t)min_y << sub_pixel_bits) + (sub_pixel_scale >> 1);
 
-    float w0_row = edge_func(t->v[1].x, t->v[1].y, t->v[2].x, t->v[2].y, min_x + 0.5f, min_y + 0.5f) * inv_area;
-    float w1_row = edge_func(t->v[2].x, t->v[2].y, t->v[0].x, t->v[0].y, min_x + 0.5f, min_y + 0.5f) * inv_area;
-    float w2_row = edge_func(t->v[0].x, t->v[0].y, t->v[1].x, t->v[1].y, min_x + 0.5f, min_y + 0.5f) * inv_area;
+    int64_t w0_row = (p_start_x - x1) * dy12 - (p_start_y - y1) * dx12;
+    int64_t w1_row = (p_start_x - x2) * dy20 - (p_start_y - y2) * dx20;
+    int64_t w2_row = (p_start_x - x0) * dy01 - (p_start_y - y0) * dx01;
+
+    // FIX 2: Multiply steps by sub_pixel_scale (256) because the loop moves by whole pixels
+    int64_t step_x0 = dy12 << sub_pixel_bits, step_y0 = -dx12 << sub_pixel_bits;
+    int64_t step_x1 = dy20 << sub_pixel_bits, step_y1 = -dx20 << sub_pixel_bits;
+    int64_t step_x2 = dy01 << sub_pixel_bits, step_y2 = -dx01 << sub_pixel_bits;
+
+    // FIX 3: More precise Z interpolation using barycentric steps
+    float z0 = t->v[0].z, z1 = t->v[1].z, z2 = t->v[2].z;
+    float db0_dx = (float)step_x0 * inv_area, db0_dy = (float)step_y0 * inv_area;
+    float db1_dx = (float)step_x1 * inv_area, db1_dy = (float)step_y1 * inv_area;
+    float db2_dx = (float)step_x2 * inv_area, db2_dy = (float)step_y2 * inv_area;
+
+    float z_step_x = db0_dx * z0 + db1_dx * z1 + db2_dx * z2;
+    float z_step_y = db0_dy * z0 + db1_dy * z1 + db2_dy * z2;
+    
+    float b0_row = (float)w0_row * inv_area;
+    float b1_row = (float)w1_row * inv_area;
+    float b2_row = (float)w2_row * inv_area;
+    float z_row  = b0_row * z0 + b1_row * z1 + b2_row * z2;
 
     for (int y = min_y; y <= max_y; y++) {
-        float l0 = w0_row, l1 = w1_row, l2 = w2_row;
-        int row_base = y * r->screen_width;
+        int64_t w0 = w0_row, w1 = w1_row, w2 = w2_row;
+        float z = z_row;
+        int row_base = y * (int)r->screen_width;
 
         for (int x = min_x; x <= max_x; x++) {
-            if (l0 >= 0 && l1 >= 0 && l2 >= 0) {
-                float z = l0 * t->v[0].z + l1 * t->v[1].z + l2 * t->v[2].z;
+            if (((w0 + bias0) | (w1 + bias1) | (w2 + bias2)) >= 0) {
                 int idx = row_base + x;
-                
                 if (z < r->depth_buffer[idx]) {
                     r->depth_buffer[idx] = z;
-                    r->color_buffer[idx] = dc->fragment_shader(t, l0, l1, l2, uniforms);
+                    float b0 = (float)w0 * inv_area;
+                    float b1 = (float)w1 * inv_area;
+                    float b2 = 1.0f - b0 - b1;
+                    r->color_buffer[idx] = dc->fragment_shader(t, b0, b1, b2, uniforms);
                 }
             }
-            l0 += dw0_dx; l1 += dw1_dx; l2 += dw2_dx;
+            w0 += step_x0; w1 += step_x1; w2 += step_x2;
+            z += z_step_x;
         }
-        w0_row += dw0_dy; w1_row += dw1_dy; w2_row += dw2_dy;
+        w0_row += step_y0; w1_row += step_y1; w2_row += step_y2;
+        z_row += z_step_y;
     }
 }
 
