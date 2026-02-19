@@ -32,7 +32,7 @@ bool init_app(App *app) {
     app->platform = platform_create("SoftRenderer Engine", SCREEN_W, SCREEN_H);
     if (!app->platform) return false;
 
-    app->renderer = renderer_create(SCREEN_W, SCREEN_H, 10, 100, 100);
+    app->renderer = renderer_create(SCREEN_W, SCREEN_H, 9, 100, 100);
     renderer_set_cull_mode(app->renderer, CULL_BACK_CCW); 
 
     app->scene = scene_create(INSTANCE_COUNT);
@@ -57,7 +57,7 @@ bool init_app(App *app) {
         if (!m) continue;
 
         Entity* e = scene_add_entity(app->scene, m, pos, (vec3){0,0,0}, 1.25f, color);
-        e->fs = (m == cube) ? fs_multi_light : fs_multi_light_smooth;
+        e->fs = fs_multi_light_smooth;
     }
 
     // Add Lights
@@ -91,8 +91,20 @@ void update_game_logic(App *app, float dt) {
         float home_x = (col + 0.5f) * light_cell_size - (field_size / 2.0f);
         float home_z = (row + 0.5f) * light_cell_size - (field_size / 2.0f);
         float wander = light_cell_size * 0.4f; 
+
+        l->intensity = 60.0f + sinf(app->total_time * 2.0f + i) * 30.0f;
         
         l->position = (vec3){ home_x + sinf(app->total_time * 0.8f + i * 13.0f) * wander, 15.0f + sinf(app->total_time * 1.5f + i) * 5.0f, home_z + cosf(app->total_time * 0.6f + i * 17.0f) * wander };
+    }
+
+    for(size_t i = 0; i < app->scene->entity_count; i++) {
+        Entity *e = &app->scene->entities[i];
+        float t = app->total_time * 0.5f + i * 0.001f;
+
+        // Procedural "Rainbow" or "Neon" shifting
+        e->base_color.x = sinf(t) * 0.5f + 0.5f;
+        e->base_color.y = sinf(t + 2.0f) * 0.5f + 0.5f;
+        e->base_color.z = sinf(t + 4.0f) * 0.5f + 0.5f;
     }
 }
 
