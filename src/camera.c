@@ -14,13 +14,15 @@ void camera_update_freefly(Camera *cam, InputState *input, float dt) {
         sinf(TO_RAD(cam->pitch)), 
         sinf(TO_RAD(cam->yaw)) * cosf(TO_RAD(cam->pitch))
     });
-    vec3 right = vec3_norm(vec3_cross(front, cam->up));
+    
+    vec3 move_front = vec3_norm((vec3){ front.x, 0.0f, front.z });
     vec3 world_up = {0.0f, 1.0f, 0.0f}; 
+    vec3 right = vec3_norm(vec3_cross(move_front, world_up));
     
     // 3. Movement
     float speed = 30.0f * dt; 
-    if(input->keys[KEY_W]) cam->position = vec3_add(cam->position, vec3_mul(front, speed));
-    if(input->keys[KEY_S]) cam->position = vec3_sub(cam->position, vec3_mul(front, speed));
+    if(input->keys[KEY_W]) cam->position = vec3_add(cam->position, vec3_mul(move_front, speed));
+    if(input->keys[KEY_S]) cam->position = vec3_sub(cam->position, vec3_mul(move_front, speed));
     if(input->keys[KEY_A]) cam->position = vec3_sub(cam->position, vec3_mul(right, speed));
     if(input->keys[KEY_D]) cam->position = vec3_add(cam->position, vec3_mul(right, speed));
     if(input->keys[KEY_SPACE]) cam->position = vec3_add(cam->position, vec3_mul(world_up, speed));

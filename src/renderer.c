@@ -4,9 +4,6 @@
 #include <string.h>
 #include <math.h>
 
-#include <stdint.h>
-
-
 #define STARTING_TRI_CAP 8192
 #define STARTING_DRAW_CAP 256
 #define INITIAL_UNIFORM_POOL_SIZE (1024 * 1024) 
