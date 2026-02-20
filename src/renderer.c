@@ -4,6 +4,9 @@
 #include <string.h>
 #include <math.h>
 
+#include <stdint.h>
+
+
 #define STARTING_TRI_CAP 8192
 #define STARTING_DRAW_CAP 256
 #define INITIAL_UNIFORM_POOL_SIZE (1024 * 1024) 
@@ -441,7 +444,6 @@ static void* renderer_worker_thread(void* data) {
         int assemble_done = (current_stage == STAGE_ASSEMBLE && atomic_load(&r->next_draw_call) >= (int)r->draw_call_count);
         int raster_done = (current_stage == STAGE_RASTER && atomic_load(&r->next_tile) >= (int)r->tile_count);
         
-        // FIX: Only switch to idle if no one else has already
         if (vertex_done || assemble_done || raster_done) {
             if (r->stage != STAGE_IDLE) {
                 r->stage = STAGE_IDLE;
