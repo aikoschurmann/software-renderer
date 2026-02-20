@@ -32,7 +32,6 @@ typedef struct HashNode {
     struct HashNode *next;
 } HashNode;
 
-
 static void v3_normalize_ptr(float *x, float *y, float *z) {
     float len = sqrtf((*x)*(*x) + (*y)*(*y) + (*z)*(*z));
     if (len > 1e-6f) {

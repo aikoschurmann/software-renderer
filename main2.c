@@ -26,6 +26,11 @@ typedef struct {
     bool  is_running;
 } App;
 
+void apply_post_processing(uint32_t* buffer, int width, int height, float time) {
+
+}
+
+
 bool init_app(App *app) {
     memset(app, 0, sizeof(App));
     app->platform = platform_create("SoftRenderer - Kinetic Lights Demo", SCREEN_W, SCREEN_H);

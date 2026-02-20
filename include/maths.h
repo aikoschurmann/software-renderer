@@ -26,10 +26,14 @@ static inline vec3 vec3_sub(vec3 a, vec3 b) { return (vec3){a.x-b.x, a.y-b.y, a.
 static inline vec3 vec3_mul(vec3 v, float s) { return (vec3){v.x*s, v.y*s, v.z*s}; }
 static inline vec3 vec3_div(vec3 v, float s) { return (vec3){v.x/s, v.y/s, v.z/s}; } 
 static inline float vec3_len(vec3 v) { return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); }  
+static inline float vec3_len_sq(vec3 v) { return v.x*v.x + v.y*v.y + v.z*v.z; }  
 static inline float vec3_dot(vec3 a, vec3 b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 static inline vec3 vec3_cross(vec3 a, vec3 b) {
     return (vec3){ a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x };
 }
+
+
+
 static inline vec3 vec3_norm(vec3 v) {
     float l = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
     return l > 0 ? vec3_mul(v, 1.0f/l) : v;

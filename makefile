@@ -1,6 +1,6 @@
 # Compiler and flags
 CC := gcc
-CFLAGS := -Wall -Wextra -O2 -Iinclude -MMD -MP $(shell sdl2-config --cflags)
+CFLAGS := -Wall -Wextra -O3 -ffast-math -Iinclude -MMD -MP $(shell sdl2-config --cflags)
 LDFLAGS := $(shell sdl2-config --libs)
 
 # Directories

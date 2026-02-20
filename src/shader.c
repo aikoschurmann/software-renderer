@@ -126,45 +126,47 @@ uint32_t fs_multi_light_smooth(Triangle *t, float b0, float b1, float b2, void *
         const PointLight *l = &u->scene_lights[light_idx];
 
         vec3 L_vec = vec3_sub(l->position, world_pos);
-        float dist = vec3_len(L_vec);
-        if (dist > 50.0f) continue;
-        vec3 L = vec3_div(L_vec, dist); 
+        
+        float dist_sq = vec3_len_sq(L_vec);
+        if (dist_sq > 2500.0f) continue; // 50^2 = 2500
+        
+        float inv_dist = 1 / sqrtf(dist_sq);
+        float dist = dist_sq * inv_dist;       // dist = dist^2 * (1/dist)
+        vec3 L = vec3_mul(L_vec, inv_dist);    // normalize L_vec without division
 
-        // Smooth fade out
-        float fade = 1.0f - (dist / 50.0f);
+        float fade = 1.0f - (dist * 0.02f); // x / 50.0f is same as x * 0.02f
 
-        float att = 1.0f / (1.0f + 0.1f * dist + 0.4f * dist * dist);
+        float att = 1.0f / (1.0f + 0.1f * dist + 0.4f * dist_sq);
         att *= l->intensity * fade;
 
         float NdotL = vec3_dot(normal, L);
-        if(NdotL < 0.0f) NdotL = 0.0f;
+        
+        if(NdotL <= 0.0f) continue;
 
         float spec = 0.0f;
-        if(NdotL > 0.0f) {
-            vec3 H = vec3_norm(vec3_add(L, view_dir));
-            float NdotH = vec3_dot(normal, H);
-            if(NdotH > 0.0f) {
-                float p = NdotH;
-                p *= p; p *= p; p *= p; p *= p; p *= p; p *= p; 
-                spec = p; 
-            }
+        vec3 H = vec3_norm(vec3_add(L, view_dir));
+        float NdotH = vec3_dot(normal, H);
+        
+        if(NdotH > 0.0f) {
+            float p = NdotH;
+            p *= p; p *= p; p *= p; p *= p; p *= p; p *= p; 
+            spec = p; 
         }
 
         vec3 light_color = l->color;
-        vec3 diff_comp = vec3_mul(light_color, NdotL);
-        vec3 spec_comp = vec3_mul(light_color, spec);
-        
-        vec3 result = vec3_add(diff_comp, spec_comp);
-        result = vec3_mul(result, att);
+        float diff_factor = NdotL * att;
+        float spec_factor = spec * att;
 
-        total_light = vec3_add(total_light, result);
+        total_light.x += light_color.x * (diff_factor + spec_factor);
+        total_light.y += light_color.y * (diff_factor + spec_factor);
+        total_light.z += light_color.z * (diff_factor + spec_factor);
     }
 
     vec3 final_rgb = vec3_mul_vec3(u->base_color, total_light);
 
-    if(final_rgb.x > 1.0f) final_rgb.x = 1.0f;
-    if(final_rgb.y > 1.0f) final_rgb.y = 1.0f;
-    if(final_rgb.z > 1.0f) final_rgb.z = 1.0f;
+    final_rgb.x = final_rgb.x > 1.0f ? 1.0f : final_rgb.x;
+    final_rgb.y = final_rgb.y > 1.0f ? 1.0f : final_rgb.y;
+    final_rgb.z = final_rgb.z > 1.0f ? 1.0f : final_rgb.z;
 
     return vec3_to_color(final_rgb);
 }
